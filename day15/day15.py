@@ -1,50 +1,59 @@
-import sys
 from collections import defaultdict
 
-
-sys.setrecursionlimit(15000)
 
 with open('input') as f:
     cave = [[int(col) for col in row] for row in f.read().split('\n') if row]
 
-risk = defaultdict(int)
-
-def get_risk(x, y):
-    if x < 0 or y < 0:
-        return None
-    if (0, 0) not in risk:
-        return 0
-    try:
-        return cave[x][y]
-    except IndexError:
-        return None
+def explore(cave):
+    def get_risk_to_node(node):
+        if node in risk_to_node:
+            return risk_to_node[node]
+        return float('inf') 
 
 
-def get_current_risk(x, y):
-    if (x, y) in risk:
-        return risk[(x, y)]
-    return 9 * (x + y) + 1
-
-def explore(x, y, current_risk, direction):
-    risk_of_entering = get_risk(x, y) 
-    if risk_of_entering is None:
-        return
-    risk_for_position = current_risk + risk_of_entering
-    if risk_for_position >= get_current_risk(x, y):
-        return
-    risk[(x, y)] = risk_for_position
-    if direction != 1:
-        explore(x - 1, y, risk_for_position, 4)
-    if direction != 2:
-        explore(x, y - 1, risk_for_position, 3)
-    if direction != 3:
-        explore(x, y + 1, risk_for_position, 2)
-    if direction != 4:
-        explore(x + 1, y, risk_for_position, 1)
+    def get_risk_estimate(node):
+        return len(cave) - node[0] + len(cave[0]) - node[1]
 
 
-explore(0, 0, 0, 2)
-print(get_current_risk(len(cave) - 1, len(cave[0]) - 1))
+    def get_neighbour(current, delta):
+        x = current[0] + delta[0]
+        y = current[1] + delta[1]
+        if x < 0 or y < 0 or x >= len(cave) or y >= len(cave[0]):
+            return
+        return x, y
+
+
+    def get_lowest_risk_node():
+        min_risk = float('inf')
+        min_node = None
+        for node in nodes_to_investigate:
+            risk = risk_through_node[node]
+            if risk < min_risk:
+                min_risk = risk
+                min_node = node
+        return min_node
+
+ 
+    risk_to_node = {(0, 0): 0}
+    risk_through_node = {(0, 0): get_risk_estimate((0, 0))}
+    nodes_to_investigate = set([(0, 0)])
+
+    while len(nodes_to_investigate):
+        best_node = get_lowest_risk_node()
+        if best_node == (len(cave) - 1, len(cave[0]) - 1):
+            return risk_to_node[best_node]
+        nodes_to_investigate.remove(best_node)
+        for neighbour_delta in [(-1, 0), (0, -1), (0, 1), (1, 0)]:
+            neighbour = get_neighbour(best_node, neighbour_delta)
+            if not neighbour:
+                continue
+            risk_to_neighbour = risk_to_node[best_node] + cave[neighbour[0]][neighbour[1]]
+            if risk_to_neighbour < get_risk_to_node(neighbour):
+                risk_to_node[neighbour] = risk_to_neighbour
+                risk_through_node[neighbour] = risk_to_neighbour + get_risk_estimate(neighbour)
+                nodes_to_investigate.add(neighbour)
+
+print(explore(cave))
 
 big_cave = []
 for i in range(5):
@@ -54,9 +63,6 @@ for i in range(5):
         for r, row in enumerate(cave):
             for col in row:
                 big_cave[i * len(cave) + r].append((col - 1 + i + j) % 9 + 1)
-cave = big_cave
-risk = defaultdict(int)
 
-explore(0, 0, 0, 2)
-print(get_current_risk(len(cave) - 1, len(cave[0]) - 1))
+print(explore(big_cave))
 
